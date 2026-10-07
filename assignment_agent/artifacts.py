@@ -50,7 +50,7 @@ def render_result(source, tests, folder):
                     page.set_content(markup)
                     page.evaluate("document.fonts.ready")
                     path = folder / f"result-{i:02d}.png"
-                    page.screenshot(path=str(path), full_page=True)
+                    page.locator("article").screenshot(path=str(path))
                     paths.append(path)
             finally:
                 browser.close()

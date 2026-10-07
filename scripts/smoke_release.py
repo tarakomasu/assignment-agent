@@ -25,7 +25,7 @@ with tempfile.TemporaryDirectory(prefix="課題 テスト ") as temp:
     env["ASSIGNMENT_AGENT_STATE"] = str(temp / "state")
     env["ASSIGNMENT_AGENT_AGY"] = str(fake)
     env["PATH"] = str(Path(env["SYSTEMROOT"]) / "System32")
-    result = subprocess.run([str(root / "assignment-agent.exe"), "run", str(temp / "講義 資料.pdf"),
+    result = subprocess.run([str(root / "assignment-agent.exe"), "--debug", "run", str(temp / "講義 資料.pdf"),
                  "--output", str(temp / "output"), "--work", str(temp / "work")], env=env)
     if result.returncode:
         raise SystemExit(result.returncode)

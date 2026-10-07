@@ -8,7 +8,13 @@ from .runner import compiler
 
 
 def main(argv=None):
+    # Windows redirected consoles can default to a legacy code page. Keep both
+    # user messages and CI output readable without UnicodeEncodeError.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description="講義PDFから今回のC言語課題を検証し、Wordを作成します。")
+    parser.add_argument("--debug", action="store_true", help="開発用のエラー詳細を表示")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("login", help="初回のGoogleログイン")
     commands.add_parser("doctor", help="同梱ツールの確認")
@@ -64,5 +70,8 @@ def main(argv=None):
         print(f"\nエラー：{exc}", file=sys.stderr)
         return 1
     except Exception:
+        if args.debug:
+            import traceback
+            traceback.print_exc()
         print("\n処理に失敗しました。空き容量・ZIPの展開・ネット接続を確認してください。", file=sys.stderr)
         return 1

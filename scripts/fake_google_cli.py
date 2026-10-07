@@ -9,6 +9,8 @@ PLAN = {"lecture_title": "料金計算 動作確認", "missing_information": [],
                {"stdin": "0\n0\n", "expected_stdout": "3780\n"}]}]}
 SOURCE = '#include <stdio.h>\nint main(void) { int a,b; scanf("%d%d", &a, &b); printf("%d\\n", 3780+20*a+5*b); return 0; }\n'
 
+sys.stdin.reconfigure(encoding="utf-8")
+
 for line in sys.stdin:
     prompt = json.loads(line)["message"]["content"]
     answer = PLAN if "まだ解答コード" in prompt else (

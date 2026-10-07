@@ -37,7 +37,7 @@ Invoke-WebRequest "https://raw.githubusercontent.com/python/cpython/v$pythonVers
 python scripts/collect_licenses.py "$release/licenses"
 Assert-Exit
 
-& "$release/assignment-agent.exe" doctor
+& "$release/assignment-agent.exe" --debug doctor
 Assert-Exit
 python -m PyInstaller --noconfirm --onefile --name fake-google-cli --distpath build/fake scripts/fake_google_cli.py
 Assert-Exit
