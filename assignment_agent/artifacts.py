@@ -59,7 +59,7 @@ def render_result(source, tests, folder):
     return paths
 
 
-def make_docx(title, assignments, images, destination):
+def make_docx(title, assignments, images, destination, profile=None):
     document = Document()
     section = document.sections[0]
     section.page_width, section.page_height = Mm(210), Mm(297)
@@ -73,6 +73,9 @@ def make_docx(title, assignments, images, destination):
     for name in ("Title", "Heading 1", "Heading 2"):
         document.styles[name].font.color.rgb = RGBColor(0, 0, 0)
     document.add_paragraph(title, "Title")
+    if profile:
+        document.add_paragraph("氏名：" + profile["name"])
+        document.add_paragraph("学籍番号：" + profile["student_id"])
     for index, task in enumerate(assignments):
         if index:
             document.add_page_break()

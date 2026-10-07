@@ -14,18 +14,10 @@ python -m PyInstaller --noconfirm --clean --onedir --name assignment-agent `
 Assert-Exit
 $release = Join-Path (Get-Location) "dist/assignment-agent"
 $runtime = Join-Path $release "runtime"
-New-Item -ItemType Directory -Force "$runtime/node", "$runtime/gemini", "$runtime/browsers", "$release/input", "$release/licenses" | Out-Null
-Copy-Item (Get-Command node).Source "$runtime/node/node.exe"
-Copy-Item scripts/gemini/package*.json "$runtime/gemini/"
-Push-Location "$runtime/gemini"
-npm ci --omit=optional --ignore-scripts
-Assert-Exit
-Pop-Location
-# The CLI is fully bundled and optional native terminal/keychain modules are not required.
-Copy-Item "$runtime/gemini/node_modules/@google/gemini-cli/bundle/LICENSE" "$release/licenses/Gemini-CLI-LICENSE" -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force "$runtime/browsers", "$release/input", "$release/licenses" | Out-Null
 
 $env:PLAYWRIGHT_BROWSERS_PATH = "$runtime/browsers"
-python -m playwright install chromium
+python -m playwright install chromium --only-shell
 Assert-Exit
 
 $compilerAsset = "build/w64devkit.7z.exe"
@@ -40,8 +32,6 @@ Download-Verified "https://github.com/skeeto/w64devkit/releases/download/v2.10.0
     "dist/w64devkit-2.10.0-source.tar" "1e7a789bbc3ec58a2717b7a9069acec6a5abc58e38fa3a4dc801f22fc986e3a4"
 
 Copy-Item README.md, LICENSE, THIRD_PARTY.md $release
-Invoke-WebRequest "https://raw.githubusercontent.com/nodejs/node/$(node --version)/LICENSE" -OutFile "$release/licenses/Node-LICENSE"
-Invoke-WebRequest "https://raw.githubusercontent.com/google-gemini/gemini-cli/v0.47.0/LICENSE" -OutFile "$release/licenses/Gemini-CLI-LICENSE"
 $pythonVersion = python -c "import platform; print(platform.python_version())"
 Invoke-WebRequest "https://raw.githubusercontent.com/python/cpython/v$pythonVersion/LICENSE" -OutFile "$release/licenses/Python-LICENSE"
 python scripts/collect_licenses.py "$release/licenses"
@@ -49,7 +39,9 @@ Assert-Exit
 
 & "$release/assignment-agent.exe" doctor
 Assert-Exit
-python scripts/smoke_release.py $release
+python -m PyInstaller --noconfirm --onefile --name fake-google-cli --distpath build/fake scripts/fake_google_cli.py
+Assert-Exit
+python scripts/smoke_release.py $release build/fake/fake-google-cli.exe
 Assert-Exit
 Compress-Archive -Path $release -DestinationPath "dist/assignment-agent-windows-x64.zip" -Force
 $hashes = Get-FileHash "dist/assignment-agent-windows-x64.zip", "dist/w64devkit-2.10.0-source.tar" -Algorithm SHA256

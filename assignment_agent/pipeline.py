@@ -68,7 +68,7 @@ def review_result(value):
     return valid, issues
 
 
-def run(pdf, output_root, work_root, model=None, ai_factory=Gemini, progress=print):
+def run(pdf, output_root, work_root, model=None, ai_factory=Gemini, progress=print, profile=None):
     pdf = Path(pdf).resolve()
     page_count = pdf_pages(pdf)
     run_id = datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
@@ -78,16 +78,21 @@ def run(pdf, output_root, work_root, model=None, ai_factory=Gemini, progress=pri
     stage.mkdir()
     shutil.copyfile(pdf, workspace / "lecture.pdf")
     ai = ai_factory(workspace, model=model)
+    # Personal identifiers stay local. The model only knows whether placeholders
+    # can later be substituted, never the actual name or student ID.
+    profile_context = ("\n提出者の氏名・学籍番号はローカルで設定済み。コード内で必要なら文字列リテラル中の"
+                       "__STUDENT_NAME__ と __STUDENT_ID__ を使い、テストにも同じ仮文字列を使う。"
+                       if profile else "\n提出者情報は未設定。課題の解答に必須の場合だけ不足情報とする。")
     try:
         progress("1/5 PDF全体を読み、今回の課題とテストを特定しています…")
-        plan = ai.ask(prompts.DISCOVER)
+        plan = ai.ask(prompts.DISCOVER + profile_context)
         title, assignments = parse_plan(plan, page_count)
         dump(stage / "assignment.json", plan)
         progress(f"今回の課題：{len(assignments)}件")
         for task in assignments:
             progress(f"  PDF {task.page}ページ：{task.title}")
         progress("2/5 講義内容に沿ったCコードを生成しています…")
-        parse_sources(ai.ask(prompts.GENERATE + json.dumps(plan, ensure_ascii=False)), assignments)
+        parse_sources(ai.ask(prompts.GENERATE + json.dumps(plan, ensure_ascii=False) + profile_context), assignments)
         for attempt in range(3):
             progress(f"3/5 Cコードをコンパイル・実行・検証しています（{attempt + 1}/3）…")
             reports, failed = execute_tests(assignments, stage, workspace)
@@ -95,7 +100,7 @@ def run(pdf, output_root, work_root, model=None, ai_factory=Gemini, progress=pri
                                   "actual_results": reports}, ensure_ascii=False)
             if not failed:
                 progress("4/5 PDFの仕様と全課題の解答を照合しています…")
-                valid, issues = review_result(ai.ask(prompts.REVIEW + payload))
+                valid, issues = review_result(ai.ask(prompts.REVIEW + payload + profile_context))
                 dump(stage / "review.json", {"valid": valid, "issues": issues})
                 if valid:
                     break
@@ -104,10 +109,23 @@ def run(pdf, output_root, work_root, model=None, ai_factory=Gemini, progress=pri
             if attempt == 2:
                 raise AgentError("3回の検証で問題を解決できませんでした。Wordは作成しません。\n" + "\n".join(issues))
             progress("検証で問題が見つかりました。コードを修正しています…")
-            parse_sources(ai.ask(prompts.REPAIR + payload + "\n指摘：" + json.dumps(issues, ensure_ascii=False)), assignments)
+            parse_sources(ai.ask(prompts.REPAIR + payload + "\n指摘：" + json.dumps(issues, ensure_ascii=False) + profile_context), assignments)
         progress("5/5 実行結果画像とWordを作成しています…")
+        if profile:
+            # Substitute only after the last AI call, then execute the final code
+            # again. The final private code/results are never sent to Google.
+            for task in assignments:
+                for placeholder, field in (("__STUDENT_NAME__", "name"), ("__STUDENT_ID__", "student_id")):
+                    value = profile[field]
+                    task.source = task.source.replace(placeholder, json.dumps(value, ensure_ascii=False)[1:-1])
+                    for test in task.tests:
+                        test.stdin = test.stdin.replace(placeholder, value)
+                        test.expected_stdout = test.expected_stdout.replace(placeholder, value)
+            reports, failed = execute_tests(assignments, stage, workspace)
+            if failed:
+                raise AgentError("提出者情報の反映後の検証に失敗しました。Wordは作成しません。")
         images = {a.id: render_result(a.source, reports[a.id], stage / a.id) for a in assignments}
-        make_docx(title, assignments, images, stage / "submission.docx")
+        make_docx(title, assignments, images, stage / "submission.docx", profile=profile)
         dump(stage / "manifest.json", {"pdf_filename": pdf.name, "page_count": page_count,
                                        "assignments": len(assignments), "status": "verified"})
         output = Path(output_root).resolve() / run_id

@@ -127,3 +127,25 @@ def test_broken_pdf_stops_before_ai(tmp_path):
     path.write_text("not a PDF")
     with pytest.raises(AgentError):
         run(path, tmp_path / "out", tmp_path / "work", ai_factory=fake_ai([]))
+
+
+def test_profile_stays_local_and_final_code_retested(pdf, tmp_path, monkeypatch):
+    monkeypatch.setattr("assignment_agent.pipeline.render_result", lambda *a: [])
+    plan = copy.deepcopy(PLAN)
+    plan["assignments"][0]["tests"] = [{"stdin": "", "expected_stdout": "__STUDENT_NAME__ / __STUDENT_ID__\n"}]
+    source = '#include <stdio.h>\nint main(void) { printf("__STUDENT_NAME__ / __STUDENT_ID__\\n"); return 0; }'
+    profile = {"name": '学生"太郎', "student_id": "12345678"}
+    base = fake_ai([plan, generate(source), {"valid": True, "issues": []}])
+
+    class PrivateAI(base):
+        def ask(self, prompt):
+            assert profile["name"] not in prompt
+            assert profile["student_id"] not in prompt
+            return super().ask(prompt)
+
+    result = run(pdf, tmp_path / "out", tmp_path / "work", ai_factory=PrivateAI, profile=profile)
+    tests = json.loads((result.parent / "task_01/tests.json").read_text())
+    assert tests[0]["stdout"] == '学生"太郎 / 12345678\n'
+    assert tests[0]["passed"]
+    text = "\n".join(p.text for p in Document(result).paragraphs)
+    assert profile["name"] in text and profile["student_id"] in text

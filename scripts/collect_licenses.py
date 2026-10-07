@@ -9,7 +9,7 @@ for package in ("python-docx", "lxml", "playwright", "pypdf", "greenlet", "pyee"
     dist = importlib.metadata.distribution(package)
     folder = target / package
     folder.mkdir(parents=True, exist_ok=True)
-    (folder / "METADATA.txt").write_text(str(dist.metadata), encoding="utf-8")
+    (folder / "METADATA.txt").write_text(dist.read_text("METADATA") or "", encoding="utf-8")
     for file in dist.files or []:
         if "license" in str(file).lower() or "copying" in str(file).lower():
             source = Path(dist.locate_file(file))

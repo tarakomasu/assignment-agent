@@ -18,11 +18,19 @@
 .\assignment-agent.exe login
 ```
 
+初回はGoogle公式のAntigravity CLIを自動でダウンロードし、公式配布情報のSHA512で検証します。
 ブラウザで自分のGoogleアカウントにログインします。
-ログインが終わってGeminiの入力画面になったら `/quit` と入力して終了します。
-ログイン情報はこのPCのユーザー別の領域に保存されます。
+ログインが終わってAntigravityの入力画面になったら `/quit` と入力して終了します。
+ログイン情報はGoogle公式CLIが管理します。既存のAntigravityログインがあれば利用します。
 
-5. `input` フォルダに講義PDFを1つ置いて、次を実行します。
+5. 初回だけ、提出者の氏名と学籍番号を設定します。下の例を自分の情報に置き換えます。
+
+```powershell
+.\assignment-agent.exe profile --name "自分の氏名" --student-id "自分の学籍番号"
+```
+
+この情報はローカルに保存し、Wordの先頭に記載します。Googleへの課題処理の入力には含めません。
+6. `input` フォルダに講義PDFを1つ置いて、次を実行します。
 
 ```powershell
 .\assignment-agent.exe run
@@ -39,9 +47,9 @@ PDFの場所を直接指定することもできます。空白を含むパス�
 複数課題は1つのWordにまとめ、課題ごとに改ページします。
 氏名など、PDFだけでは確定できない必須情報がある場合は処理を停止します。
 
-**Python、Node.js、Gemini CLI、GCCの個別インストールは不要です。**
+**Python、Node.js、GCCの個別インストールは不要です。Google CLIは初回loginで自動導入します。**
 インターネット接続とGoogleログインは必要です。Windows 10/11のx64版が対象です。
-ZIPは実行環境を含むため大きめです。OneDriveやネットワークドライブよりローカルのフォルダを推奨します。
+ZIPはPython実行環境・GCC・画像生成ブラウザを含むため大きめです。初回loginでも追加のダウンロードが発生します。OneDriveやネットワークドライブよりローカルのフォルダを推奨します。
 
 ## 出力
 
@@ -71,15 +79,17 @@ PDFとの仕様照合失敗の場合は最大2回コードを修正します。
 
 - ログイン・利用上限のエラー：`login` を再実行します。Google側の利用上限に達した場合は時間をおいてください。
 - 学校・会社のGoogleアカウント：Google Cloudプロジェクトの設定が必要な場合があります。
-  最初は個人のGoogleアカウントを推奨します。
+  アカウントの条件はGoogle公式のログイン案内に従ってください。
 - ツールが見つからない：ZIPを「すべて展開」し、runtimeフォルダも残してください。
 - inputにPDFが複数ある：1つにするか、`run "PDFのパス"` で指定します。
 - パスワード付きPDF、20MBを超えるPDF、100ページを超えるPDFは対象外です。
 - エラーが続く場合：`work/実行日時/failure.json` を確認します。
 
 PDF全体・生成コード・検証結果はGoogleのGeminiへ送信されます。
-認証情報は `%LOCALAPPDATA%\AssignmentAgent\home\.gemini` に保持され、GitHubにはアップロードしません。
-この領域を削除するとログインし直せます。講義資料と出力も自動でGitHubに送信しません。
+認証情報はAntigravity CLIとOSの認証ストレージが管理し、アプリにはコピーしません。
+ログアウトしたい場合は `login` で入力画面を開いて `/logout` を実行してください。
+自動取得したCLI本体は `%LOCALAPPDATA%\AssignmentAgent\bin` に置きます。講義資料と出力も自動でGitHubに送信しません。
+氏名・学籍番号の設定は `%LOCALAPPDATA%\AssignmentAgent\profile.json` に保存します。
 
 ## 実行と検証の範囲
 
@@ -101,11 +111,10 @@ python -m venv .venv
 # macOS: source .venv/bin/activate
 python -m pip install -r requirements-dev.txt
 python -m playwright install chromium
-npm ci --prefix scripts/gemini --omit=optional --ignore-scripts
 ```
 
-開発時はGCCをインストールし、Gemini CLI 0.47.0をPATHで利用できるようにするか、
-`runtime/gemini/node_modules` と `runtime/node/node(.exe)` を配置してください。
+開発時はGCCとGoogle公式のAntigravity CLIをインストールします。
+macOSでは `~/.local/bin/agy` も自動検出します。
 
 ```text
 python -m assignment_agent login
@@ -113,10 +122,10 @@ python -m assignment_agent run "講義.pdf"
 python -m pytest -q
 ```
 
-Geminiを呼ばないテストで、料金計算の実行・不一致・タイムアウト・出力上限・修正・
+Googleに接続しないテストで、料金計算の実行・不一致・タイムアウト・出力上限・修正・
 複数課題・Word生成・不正な応答・失敗時にWordを出さない動作を検証します。
 Windows CIではZIP用exeを作成し、Python・Node・GCCをPATHから外した状態でも
-同梱ツールだけでC実行からWord生成まで動くことを検証します。
+同梱ツールだけでC実行からWord生成まで動くことを検証します（AI応答だけはオフラインのテスト用CLIで代替）。
 Googleログインと実際のAI応答は利用者の端末で行い、CIに認証情報を入れません。
 
 ## Windows版を配布する
@@ -126,6 +135,10 @@ GitHub ActionsはmainへのpushでWindows ZIPを作り、Actionsの成果物と�
 配布物とSHA256SUMS.txt、Cコンパイラの対応ソースを同じリリースに置きます。
 第三者ライセンスは [THIRD_PARTY.md](THIRD_PARTY.md) を参照してください。
 
-Geminiの方式は公式の[Googleログイン](https://geminicli.com/docs/get-started/authentication/)、
-[非対話実行](https://geminicli.com/docs/cli/headless/)、
-[PDF読み取り](https://geminicli.com/docs/tools/file-system/)に従っています。
+Google側の接続は公式の[Antigravity CLIのGoogleログイン](https://www.antigravity.google/docs/cli/install/)、
+[非対話実行](https://www.antigravity.google/docs/cli/headless/)に従います。
+PDFの読み取り専用の主エージェントを使い、外部コマンド・ファイル書き込み・MCP・他エージェントのツールは渡しません。
+
+従来のGemini CLIは2026年6月18日から個人向けGoogleログインの提供を終了しました。
+そのため、本アプリではGoogle公式の後継CLIからGeminiモデルを呼び出します。
+[Googleの移行告知](https://developers.googleblog.com/en/an-important-update-transitioning-gemini-cli-to-antigravity-cli/)
