@@ -64,16 +64,33 @@ def main(argv=None):
             if len(files) != 1:
                 raise AgentError("inputにPDFを1つ置くか、runの後にPDFのパスを指定してください。")
             pdf = files[0]
+        print("課題処理を開始します…", flush=True)
+        if args.debug:
+            print(f"PDF：{pdf.resolve()}", flush=True)
+            print("処理モジュールを読み込んでいます…", flush=True)
         from .pipeline import run
         from .profile import load_profile
-        result = run(pdf, args.output, args.work, args.model, progress=lambda x: print(x, flush=True), profile=load_profile())
+        if args.debug:
+            print("提出者設定を読み込んでいます…", flush=True)
+        profile = load_profile()
+        result = run(pdf, args.output, args.work, args.model, progress=lambda x: print(x, flush=True), profile=profile)
         print(f"\n作成しました：{result}\nWordを開いてコード・実行結果・提出条件を確認してください。")
         return 0
     except KeyboardInterrupt:
         print("\n処理を中止しました。", file=sys.stderr)
         return 130
     except AgentError as exc:
+        if args.debug:
+            import traceback
+            traceback.print_exc()
         print(f"\nエラー：{exc}", file=sys.stderr)
+        return 1
+    except SystemExit as exc:
+        # Dependencies must not turn an unfinished run into a successful exit.
+        if args.debug:
+            import traceback
+            traceback.print_exc()
+        print(f"\n処理が途中で終了しました（内部終了コード：{exc.code}）。Wordは完成していません。", file=sys.stderr)
         return 1
     except Exception:
         if args.debug:

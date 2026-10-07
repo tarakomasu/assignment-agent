@@ -70,20 +70,23 @@ def review_result(value):
 
 def run(pdf, output_root, work_root, model=None, ai_factory=Gemini, progress=print, profile=None):
     pdf = Path(pdf).resolve()
+    progress("PDFの形式とページ数を確認しています…")
     page_count = pdf_pages(pdf)
     run_id = datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
     workspace = Path(work_root).resolve() / run_id
     workspace.mkdir(parents=True)
     stage = workspace / "artifacts"
     stage.mkdir()
-    shutil.copyfile(pdf, workspace / "lecture.pdf")
-    ai = ai_factory(workspace, model=model)
     # Personal identifiers stay local. The model only knows whether placeholders
     # can later be substituted, never the actual name or student ID.
     profile_context = ("\n提出者の氏名・学籍番号はローカルで設定済み。コード内で必要なら文字列リテラル中の"
                        "__STUDENT_NAME__ と __STUDENT_ID__ を使い、テストにも同じ仮文字列を使う。"
                        if profile else "\n提出者情報は未設定。課題の解答に必須の場合だけ不足情報とする。")
     try:
+        progress("講義PDFを作業フォルダにコピーしています…")
+        shutil.copyfile(pdf, workspace / "lecture.pdf")
+        progress("Googleへの問い合わせを準備しています…")
+        ai = ai_factory(workspace, model=model)
         progress("1/5 PDF全体を読み、今回の課題とテストを特定しています…")
         plan = ai.ask(prompts.DISCOVER + profile_context)
         title, assignments = parse_plan(plan, page_count)
@@ -139,6 +142,6 @@ def run(pdf, output_root, work_root, model=None, ai_factory=Gemini, progress=pri
             shutil.rmtree(pending, ignore_errors=True)
             raise
         return output / "submission.docx"
-    except Exception as exc:
+    except (Exception, SystemExit) as exc:
         dump(workspace / "failure.json", {"error": str(exc), "status": "failed"})
         raise

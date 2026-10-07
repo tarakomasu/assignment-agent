@@ -17,6 +17,11 @@ root = Path(sys.argv[1]).resolve()
 fake = Path(sys.argv[2]).resolve()
 with tempfile.TemporaryDirectory(prefix="課題 テスト ") as temp:
     temp = Path(temp)
+    # The executable and its bundled libraries must also work under Japanese
+    # install paths, not just with Japanese input/output paths.
+    installed = temp / "デスクトップ" / "課題 アプリ"
+    shutil.copytree(root, installed)
+    root = installed
     writer = PdfWriter()
     writer.add_blank_page(width=300, height=300)
     with (temp / "講義 資料.pdf").open("wb") as stream:
