@@ -1,14 +1,16 @@
 """Bounded local C execution. These guards are not an OS security sandbox."""
 import os
+import hashlib
 import re
 import shutil
 import signal
 import subprocess
 import tempfile
 import time
+import uuid
 from pathlib import Path
 
-from .gemini import app_root
+from .gemini import app_root, state_root
 from .models import AgentError
 
 MAX_OUTPUT = 256 * 1024
@@ -43,6 +45,34 @@ def compiler():
     found = str(bundled) if bundled.is_file() else shutil.which("gcc")
     if not found:
         raise AgentError("Cコンパイラがありません。GitHub ReleasesのWindows用ZIPを使用してください。")
+    if os.name == "nt" and not found.isascii():
+        # GCC/collect2 discover sibling tools using narrow-character paths.
+        # Cache the bundled toolchain outside Japanese installation folders.
+        if not bundled.is_file():
+            raise AgentError("GCCを英数字のみのパスに置いてください。")
+        toolchain = bundled.parents[1]
+        digest = hashlib.sha256()
+        for filename in ("gcc.exe", "ld.exe"):
+            with (toolchain / "bin" / filename).open("rb") as stream:
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    digest.update(chunk)
+        cache = state_root() / "compilers" / digest.hexdigest()[:16]
+        if not str(cache).isascii():
+            raise AgentError("コンパイラ保存先に日本語が含まれています。英数字のみのフォルダにアプリを展開してください。")
+        target = cache / "bin" / "gcc.exe"
+        if not (cache / ".complete").is_file():
+            print("日本語の配置先に対応するため、同梱CコンパイラをPC内に準備しています…", flush=True)
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            pending = cache.with_name(cache.name + ".pending-" + uuid.uuid4().hex)
+            try:
+                shutil.copytree(toolchain, pending)
+                (pending / ".complete").write_text(digest.hexdigest(), encoding="ascii")
+                if cache.exists():
+                    shutil.rmtree(cache)
+                pending.rename(cache)
+            finally:
+                shutil.rmtree(pending, ignore_errors=True)
+        found = str(target)
     return found
 
 

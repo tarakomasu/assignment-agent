@@ -27,7 +27,8 @@ with tempfile.TemporaryDirectory(prefix="課題 テスト ") as temp:
     with (temp / "講義 資料.pdf").open("wb") as stream:
         writer.write(stream)
     env = os.environ.copy()
-    env["ASSIGNMENT_AGENT_STATE"] = str(temp / "state")
+    # Keep the compiler cache ASCII while the app has a Japanese install path.
+    env["ASSIGNMENT_AGENT_STATE"] = str(Path("build/smoke-state").resolve())
     env["ASSIGNMENT_AGENT_AGY"] = str(fake)
     env["PATH"] = str(Path(env["SYSTEMROOT"]) / "System32")
     result = subprocess.run([str(root / "assignment-agent.exe"), "--debug", "run", str(temp / "講義 資料.pdf"),

@@ -90,6 +90,7 @@ PDF全体・生成コード・検証結果はGoogleのGeminiへ送信されま�
 ログアウトしたい場合は `login` で入力画面を開いて `/logout` を実行してください。
 自動取得したCLI本体は `%LOCALAPPDATA%\AssignmentAgent\bin` に置きます。講義資料と出力も自動でGitHubに送信しません。
 氏名・学籍番号の設定は `%LOCALAPPDATA%\AssignmentAgent\profile.json` に保存します。
+アプリの配置先に日本語が含まれる場合、同梱Cコンパイラを `%LOCALAPPDATA%\AssignmentAgent\compilers` に一度コピーして利用します。英数字のみの保存先を必要とするコンパイラへの対応です。
 
 ## 実行と検証の範囲
 
