@@ -36,9 +36,39 @@ jobs:
             dist/w64devkit-2.10.0-source.tar
             dist/SHA256SUMS.txt
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: word-layout-input
+          path: build/visual-smoke/submission.docx
+          if-no-files-found: error
+  layout:
+    needs: windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: word-layout-input
+          path: qa
+      - name: Install isolated CI document render tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libreoffice-writer poppler-utils fonts-noto-cjk
+      - name: Render packaged Word to page images
+        run: |
+          mkdir -p qa/images
+          libreoffice -env:UserInstallation=file:///tmp/assignment-word-qa --headless --convert-to pdf --outdir qa qa/submission.docx
+          test -s qa/submission.pdf
+          pdfinfo qa/submission.pdf
+          pdftoppm -scale-to 1500 -png qa/submission.pdf qa/images/page
+      - uses: actions/upload-artifact@v4
+        with:
+          name: word-layout-images
+          path: qa/images/*.png
+          if-no-files-found: error
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: windows
+    needs: [windows, layout]
     runs-on: ubuntu-latest
     permissions:
       contents: write

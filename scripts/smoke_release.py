@@ -6,6 +6,7 @@ screenshots and Word generation are performed by the real packaged executable.
 import json
 import os
 import subprocess
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -35,4 +36,7 @@ with tempfile.TemporaryDirectory(prefix="課題 テスト ") as temp:
     document = Document(docs[0])
     assert document.inline_shapes, "Word images missing"
     assert "携帯電話の料金" in "\n".join(p.text for p in document.paragraphs)
+    qa = Path("build/visual-smoke")
+    qa.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(docs[0], qa / "submission.docx")
     print("Portable release smoke test: PASS")
