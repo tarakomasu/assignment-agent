@@ -28,6 +28,8 @@ with tempfile.TemporaryDirectory(prefix="課題 テスト ") as temp:
     result = subprocess.run([str(root / "assignment-agent.exe"), "--debug", "run", str(temp / "講義 資料.pdf"),
                  "--output", str(temp / "output"), "--work", str(temp / "work")], env=env)
     if result.returncode:
+        for report in (temp / "work").glob("*/artifacts/*/tests.json"):
+            print(report.read_text(encoding="utf-8"))
         raise SystemExit(result.returncode)
     docs = list((temp / "output").glob("*/submission.docx"))
     assert len(docs) == 1, "Word output missing"

@@ -39,6 +39,10 @@ Assert-Exit
 
 & "$release/assignment-agent.exe" --debug doctor
 Assert-Exit
+$env:ASSIGNMENT_AGENT_STATE = "$pwd/build/google-cli-state"
+& "$release/assignment-agent.exe" --debug doctor --install-google-cli
+Assert-Exit
+Remove-Item Env:ASSIGNMENT_AGENT_STATE
 python -m PyInstaller --noconfirm --onefile --name fake-google-cli --distpath build/fake scripts/fake_google_cli.py
 Assert-Exit
 python scripts/smoke_release.py $release build/fake/fake-google-cli.exe

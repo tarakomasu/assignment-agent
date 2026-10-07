@@ -103,10 +103,14 @@ def run_c(source_path, stdin, work, timeout=5):
     env = {key: value for key, value in os.environ.items()
            if key.upper() in {"SYSTEMROOT", "WINDIR", "TEMP", "TMP", "TMPDIR", "PATH", "LANG", "LC_ALL"}}
     env["PATH"] = str(Path(gcc).parent) + os.pathsep + env.get("PATH", "")
+    # GCC's Windows file arguments can use a legacy code page. Run against
+    # simple relative filenames so Japanese user names / PDF paths still work.
+    (work / "source.c").write_text(source, encoding="utf-8")
+    env["TMPDIR"] = "."
     binary = work / ("program.exe" if os.name == "nt" else "program")
     try:
         compiled = bounded_run([gcc, "-std=c11", "-Wall", "-Wextra", "-finput-charset=UTF-8",
-                                "-fexec-charset=UTF-8", str(source_path), "-o", str(binary), "-lm"],
+                                "-fexec-charset=UTF-8", "source.c", "-o", binary.name, "-lm"],
                                work, "", 30, env)
         if compiled["exit_code"] != 0 or compiled["error"]:
             return {**compiled, "compile_success": False, "exit_code": None}

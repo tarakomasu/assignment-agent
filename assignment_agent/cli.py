@@ -17,7 +17,8 @@ def main(argv=None):
     parser.add_argument("--debug", action="store_true", help="開発用のエラー詳細を表示")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("login", help="初回のGoogleログイン")
-    commands.add_parser("doctor", help="同梱ツールの確認")
+    doctor_parser = commands.add_parser("doctor", help="同梱ツールの確認")
+    doctor_parser.add_argument("--install-google-cli", action="store_true", help="Google公式CLIの取得も確認")
     profile_parser = commands.add_parser("profile", help="提出者の氏名と学籍番号を設定")
     profile_parser.add_argument("--name", required=True)
     profile_parser.add_argument("--student-id", required=True)
@@ -36,6 +37,11 @@ def main(argv=None):
             print("提出者情報を保存しました。次回作成するWordに記載します。")
             return 0
         if args.command == "doctor":
+            if args.install_google_cli:
+                from .gemini import install_google_cli
+                import subprocess
+                command = install_google_cli()
+                subprocess.run(command + ["--version"], check=True)
             try:
                 print("Google CLI:", " ".join(gemini_command()))
             except AgentError:
