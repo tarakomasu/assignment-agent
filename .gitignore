@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+input/*
+!input/.gitkeep
+output/
+work/
+runtime/
+build/
+dist/
+*.spec
+.state/
+.env
+*.pdf
+*.docx
+*.exe
