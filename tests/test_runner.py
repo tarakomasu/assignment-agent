@@ -13,7 +13,7 @@ def test_actual_c_calculation(tmp_path, stdin, expected):
     result = run_c(source, stdin, tmp_path / "実行 作業")
     assert result["compile_success"]
     assert result["exit_code"] == 0
-    assert result["stdout"] == expected
+    assert result["stdout"].replace("\r\n", "\n") == expected
 
 
 @pytest.mark.parametrize("source,error", [

@@ -50,9 +50,9 @@ def test_real_c_png_word_flow(pdf, tmp_path):
     assert document.inline_shapes
     assert all(shape.width < document.sections[0].page_width - document.sections[0].left_margin - document.sections[0].right_margin
                for shape in document.inline_shapes)
-    tests = json.loads((result.parent / "task_01/tests.json").read_text())
+    tests = json.loads((result.parent / "task_01/tests.json").read_text(encoding="utf-8"))
     assert all(t["passed"] for t in tests)
-    assert tests[0]["stdout"] == "4080\n"
+    assert tests[0]["stdout"].replace("\r\n", "\n") == "4080\n"
 
 
 def test_wrong_code_repaired_without_changing_expectations(pdf, tmp_path, monkeypatch):
@@ -60,7 +60,7 @@ def test_wrong_code_repaired_without_changing_expectations(pdf, tmp_path, monkey
     monkeypatch.setattr("assignment_agent.pipeline.render_result", lambda *a: [])
     result = run(pdf, tmp_path / "out", tmp_path / "work", ai_factory=fake_ai([
         PLAN, generate(SOURCE.replace("3780+", "1000+")), generate(), {"valid": True, "issues": []}]))
-    tests = json.loads((result.parent / "task_01/tests.json").read_text())
+    tests = json.loads((result.parent / "task_01/tests.json").read_text(encoding="utf-8"))
     assert tests[0]["expected_stdout"] == "4080\n"
     assert tests[0]["passed"]
 
@@ -144,8 +144,8 @@ def test_profile_stays_local_and_final_code_retested(pdf, tmp_path, monkeypatch)
             return super().ask(prompt)
 
     result = run(pdf, tmp_path / "out", tmp_path / "work", ai_factory=PrivateAI, profile=profile)
-    tests = json.loads((result.parent / "task_01/tests.json").read_text())
-    assert tests[0]["stdout"] == '学生"太郎 / 12345678\n'
+    tests = json.loads((result.parent / "task_01/tests.json").read_text(encoding="utf-8"))
+    assert tests[0]["stdout"].replace("\r\n", "\n") == '学生"太郎 / 12345678\n'
     assert tests[0]["passed"]
     text = "\n".join(p.text for p in Document(result).paragraphs)
     assert profile["name"] in text and profile["student_id"] in text
